@@ -1,0 +1,46 @@
+stages:
+  - prepare
+  - test
+
+codestyle:
+  stage: prepare
+  image: python:3.12
+  variables:
+    POETRY_VIRTUALENVS_CREATE: false
+  before_script:
+    # Install dependencies
+    - pip install poetry
+    - poetry install
+  script:
+    # Format sources
+    - poe format
+
+test:3.12:
+  stage: test
+  image: python:3.12
+  variables:
+    POETRY_VIRTUALENVS_CREATE: false
+  before_script:
+    # Install dependencies
+    - pip install poetry
+    - poetry install
+  script:
+    # Format sources
+    - poe format
+    # Run tests
+    - poe test
+
+test:cover:
+  stage: test
+  image: python:3.12
+  variables:
+    POETRY_VIRTUALENVS_CREATE: false
+  before_script:
+    # Install dependencies
+    - pip install poetry
+    - poetry install
+  script:
+    # Format sources
+    - poe format
+    # Run tests
+    - poe test
