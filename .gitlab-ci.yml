@@ -1,0 +1,31 @@
+stages:
+  - prepare
+  - test
+
+codestyle:
+  stage: prepare
+  image: python:3.12
+  variables:
+    POETRY_VIRTUALENVS_CREATE: false
+  before_script:
+    # Install dependencies
+    - pip install poetry
+    - poetry install
+  script:
+    # Format sources
+    - ./scripts/format
+
+tests:
+  stage: test
+  image: python:3.12
+  variables:
+    POETRY_VIRTUALENVS_CREATE: false
+  before_script:
+    # Install dependencies
+    - pip install poetry
+    - poetry install
+  script:
+    # Format sources
+    - ./scripts/format
+    # Run tests
+    - ./scripts/test
