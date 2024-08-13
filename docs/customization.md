@@ -176,7 +176,8 @@ commitizen:
 | `choices`   | `list` | `None`  | (OPTIONAL) The choices when `type = list`. Either use a list of values or a list of dictionaries with `name` and `value` keys. Keyboard shortcuts can be defined via `key`. See examples above. |
 | `default`   | `Any`  | `None`  | (OPTIONAL) The default value for this question.                                                                                                                                                 |
 | `filter`    | `str`  | `None`  | (OPTIONAL) Validator for user's answer. **(Work in Progress)**                                                                                                                                  |
-| `multiline` | `bool` | `False` | (OPTIONAL) Enable multiline support when `type = input`.                                                                                                                                            |
+| `filter`    | `str`  | `None`  | (OPTIONAL) Validator for user's answer. The string is the name of a `commitizen.cz.utils.NAME(answer...)` function like `multiple_line_breaker`                                                 |
+| `multiline` | `bool` | `False` | (OPTIONAL) Enable multiline support when `type = input`.                                                                                                                                        |
 [different-question-types]: https://github.com/tmbo/questionary#different-question-types
 
 #### Shortcut keys
