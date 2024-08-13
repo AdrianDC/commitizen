@@ -131,13 +131,15 @@ class Commit:
             self.arguments.get("signoff") or self.config.settings["always_signoff"]
         )
 
+        extra_args = self.arguments.get("extra_cli_args", "")
+
         if signoff:
             out.warn(
                 "signoff mechanic is deprecated, please use `cz commit -- -s` instead."
             )
-            extra_args = self.arguments.get("extra_cli_args", "--") + " -s"
-        else:
-            extra_args = self.arguments.get("extra_cli_args", "")
+            if extra_args:
+                extra_args += " "
+            extra_args += "-s"
 
         c = git.commit(m, args=extra_args)
 
