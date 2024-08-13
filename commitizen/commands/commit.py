@@ -8,7 +8,10 @@ import questionary
 from commitizen import factory, git, out
 from commitizen.config import BaseConfig
 from commitizen.cz.exceptions import CzException
-from commitizen.cz.utils import get_backup_file_path
+from commitizen.cz.utils import (
+    get_backup_file_path,
+    multiple_line_breaker,
+)
 from commitizen.exceptions import (
     CommitError,
     CommitMessageLengthExceededError,
@@ -52,6 +55,19 @@ class Commit:
 
         for question in filter(lambda q: q["type"] == "list", questions):
             question["use_shortcuts"] = self.config.settings["use_shortcuts"]
+
+        # Import allowed modules for 'filter'
+        global commitizen
+        import commitizen.cz.utils
+
+        for question in filter(
+            lambda q: isinstance(q.get("filter", None), str), questions
+        ):
+            question_filter = [
+                multiple_line_breaker(question["filter"].replace("\\n", "\n"))
+            ]
+            question["filter"] = eval("\n".join(question_filter))
+
         try:
             answers = questionary.prompt(questions, style=cz.style)
         except ValueError as err:

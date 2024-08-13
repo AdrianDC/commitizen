@@ -1,7 +1,12 @@
-import pytest
+from types import LambdaType
 
+import pytest
+from pytest_mock import MockFixture
+
+from commitizen import cmd, commands
 from commitizen.config import BaseConfig, JsonConfig, TomlConfig, YAMLConfig
 from commitizen.cz.customize import CustomizeCommitsCz
+from commitizen.cz.utils import multiple_line_breaker
 from commitizen.exceptions import MissingCzCustomizeConfigError
 
 TOML_STR = r"""
@@ -38,8 +43,15 @@ TOML_STR = r"""
 
     [[tool.commitizen.customize.questions]]
     type = "input"
+    name = "subject"
+    message = "Subject."
+    filter = "lambda text: commitizen.cz.utils.required_validator(text.strip(\".\").strip(), msg=\"! Error: Subject is required\")"
+
+    [[tool.commitizen.customize.questions]]
+    type = "input"
     name = "message"
     message = "Body."
+    filter = "commitizen.cz.utils.multiple_line_breaker"
 
     [[tool.commitizen.customize.questions]]
     type = "confirm"
@@ -91,8 +103,15 @@ JSON_STR = r"""
                     },
                     {
                         "type": "input",
+                        "name": "subject",
+                        "message": "Subject.",
+                        "filter": "lambda text: commitizen.cz.utils.required_validator(text.strip(\".\").strip(), msg=\"! Error: Subject is required\")"
+                    },
+                    {
+                        "type": "input",
                         "name": "message",
-                        "message": "Body."
+                        "message": "Body.",
+                        "filter": "commitizen.cz.utils.multiple_line_breaker"
                     },
                     {
                         "type": "confirm",
@@ -140,8 +159,13 @@ commitizen:
         name: 'bug fix: A bug fix.'
       message: Select the type of change you are committing
     - type: input
+      name: subject
+      message: Subject.
+      filter: 'lambda text: commitizen.cz.utils.required_validator(text.strip(".").strip(), msg="! Error: Subject is required")'
+    - type: input
       name: message
       message: Body.
+      filter: 'commitizen.cz.utils.multiple_line_breaker'
     - type: confirm
       name: show_message
       message: Do you want to add body message in commit?
@@ -330,6 +354,13 @@ commitizen:
 """
 
 
+@pytest.fixture
+def staging_is_clean(mocker: MockFixture, tmp_git_project):
+    is_staging_clean_mock = mocker.patch("commitizen.git.is_staging_clean")
+    is_staging_clean_mock.return_value = False
+    return tmp_git_project
+
+
 @pytest.fixture(
     params=[
         TomlConfig(data=TOML_STR, path="not_exist.toml"),
@@ -437,7 +468,7 @@ def test_change_type_order_unicode(config_with_unicode):
     ]
 
 
-def test_questions(config):
+def test_questions_default(config):
     cz = CustomizeCommitsCz(config)
     questions = cz.questions()
     expected_questions = [
@@ -450,7 +481,18 @@ def test_questions(config):
             ],
             "message": "Select the type of change you are committing",
         },
-        {"type": "input", "name": "message", "message": "Body."},
+        {
+            "type": "input",
+            "name": "subject",
+            "message": "Subject.",
+            "filter": 'lambda text: commitizen.cz.utils.required_validator(text.strip(".").strip(), msg="! Error: Subject is required")',
+        },
+        {
+            "type": "input",
+            "name": "message",
+            "message": "Body.",
+            "filter": "commitizen.cz.utils.multiple_line_breaker",
+        },
         {
             "type": "confirm",
             "name": "show_message",
@@ -458,6 +500,38 @@ def test_questions(config):
         },
     ]
     assert list(questions) == expected_questions
+
+
+@pytest.mark.usefixtures("staging_is_clean")
+def test_questions_filter(config, mocker: MockFixture):
+    is_staging_clean_mock = mocker.patch("commitizen.git.is_staging_clean")
+    is_staging_clean_mock.return_value = False
+
+    prompt_mock = mocker.patch("questionary.prompt")
+    prompt_mock.return_value = {
+        "change_type": "feature",
+        "subject": "user created",
+        "message": "body of the commit",
+        "show_message": True,
+    }
+
+    commit_mock = mocker.patch("commitizen.git.commit")
+    commit_mock.return_value = cmd.Command("success", "", b"", b"", 0)
+
+    commands.Commit(config, {})()
+
+    prompts_questions = prompt_mock.call_args[0][0]
+    assert prompts_questions[0]["type"] == "list"
+    assert prompts_questions[0]["name"] == "change_type"
+    assert prompts_questions[0]["use_shortcuts"] is False
+    assert prompts_questions[1]["type"] == "input"
+    assert prompts_questions[1]["name"] == "subject"
+    assert type(prompts_questions[1]["filter"]) is LambdaType
+    assert prompts_questions[2]["type"] == "input"
+    assert prompts_questions[2]["name"] == "message"
+    assert prompts_questions[2]["filter"] == multiple_line_breaker
+    assert prompts_questions[3]["type"] == "confirm"
+    assert prompts_questions[3]["name"] == "show_message"
 
 
 def test_questions_unicode(config_with_unicode):
